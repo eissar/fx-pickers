@@ -1,94 +1,22 @@
-// --- Type Definitions ---
-// deno-lint-ignore no-namespace
-export namespace Palette {
-  /**
-   * A function used to populate commands for the palette.
-   * This function is called on `show` and optionally on `init` to retrieve an array of commands.
-   * It should return the full list of commands to be used; avoid calling `.setCommands` within this function directly.
-   *
-   * @param palette The palette instance for which commands are being populated.
-   * @returns An array of Command objects to be displayed in the palette.
-   *
-   * @example
-   * ```ts
-   * // Example of a PopulateFunc that returns a static list of commands:
-   * (palette) => {
-   *   return [
-   *     {
-   *       id: 'show-info',
-   *       title: 'Show Info',
-   *       run: (w) => { console.log('current URI:', w.gBrowser.selectedTab.linkedBrowser.documentURI.spec); }
-   *     }
-   *   ];
-   * };
-   *
-   * // Example of a PopulateFunc that dynamically generates commands:
-   * (palette) => {
-   *   const dynamicCommands = [];
-   *   // Assuming 'palette' object has properties like 'bufferName' for context
-   *   if (palette.bufferName === 'scratch') {
-   *     dynamicCommands.push({
-   *       name: 'clear-scratch',
-   *       execute: () => { console.log('Clearing scratch buffer...'); }
-   *     });
-   *   }
-   *   return dynamicCommands;
-   * };
-   * ```
-   */
-  export type PopulateFunc = (palette: Palette) => Palette.Command[];
-  export type RunFunc = (win: Window) => void | Promise<void>;
-  /**
-   * Configuration options for the Palette.
-   */
-  export interface Options {
-    placeholder?: string;
-    maxVisible?: number;
-    minQueryLength?: number;
-    /** If `true`, enable fuzzy search behavior (default true) */
-    fuzzy?: boolean;
-    /** If `true`, the `populateFunc` is called automatically when the palette initializes. (default false)*/
-    populateOnInit?: boolean;
-  }
-  /**
-   * Represents a single command that can be executed.
-   */
-  export interface Command {
-    id: string;
-    title: string;
-    run: RunFunc;
-    subtitle?: string;
-  }
-}
-/**
- * @note Command Palette is not a widget, so we cannot reuse it between windows.
- * @example
- * ```ts
- * new Palette(
- *     window,
- *     [{ id: 'hello', title: 'Say Hello', run: () => window.alert('Hello!') }]
- * )
- * ```
- */
-export class Palette {
-  private window: Window;
-  private document: Document;
-  private dialog: HTMLDialogElement;
-  private input: HTMLInputElement;
-  private results: HTMLDivElement;
-  private populateFunc: Palette.PopulateFunc;
-  private emptyState: HTMLDivElement;
-  private ranOnce: boolean;
-  private commands: Palette.Command[];
-  private filtered: Palette.Command[];
-  private selectedIndex: number;
-  private options: Required<Palette.Options>;
+// ==UserScript==
+// ==/UserScript==
+
+// commandPalette.ts
+var Palette = class {
+  window;
+  document;
+  dialog;
+  input;
+  results;
+  populateFunc;
+  emptyState;
+  ranOnce;
+  commands;
+  filtered;
+  selectedIndex;
+  options;
   /** @param populateFunc function to populate Commands avoid calling `.setCommands` within this function directly. */
-  constructor(
-    win: Window,
-    populateFunc: Palette.PopulateFunc,
-    options: Palette.Options = {},
-  ) {
+  constructor(win, populateFunc, options = {}) {
     this.window = win;
     if (!win.document) {
       throw new Error("Invalid window passed to constructor");
@@ -109,14 +37,14 @@ export class Palette {
       minQueryLength: 0,
       fuzzy: true,
       populateOnInit: false,
-      ...options,
+      ...options
     };
     this._buildUI();
     this._bindEvents();
-    // this.setCommands(this.commands);
   }
-  public show(doc: Document, prefill = ""): void {
-    if (!doc.body) return;
+  show(doc, prefill = "") {
+    if (!doc.body)
+      return;
     if (!this.ranOnce) {
       this;
       this.ranOnce = true;
@@ -127,34 +55,35 @@ export class Palette {
     this._focusInput();
     doc.body.style.overflow = "hidden";
   }
-  public hide(): void {
+  hide() {
     if (this.dialog.open) {
       this.dialog.close();
     }
     this.document.body.style.overflow = "";
     this._clearActiveDescendant();
   }
-  public add(cmd: Palette.Command): void {
-    if (!cmd || !cmd.id) throw new Error("Command must have an id");
-    const existingCmdIndex = this.commands.findIndex((obj) =>
-      obj.id === cmd.id
+  add(cmd) {
+    if (!cmd || !cmd.id)
+      throw new Error("Command must have an id");
+    const existingCmdIndex = this.commands.findIndex(
+      (obj) => obj.id === cmd.id
     );
     if (existingCmdIndex !== -1) {
-      this.commands[existingCmdIndex] = cmd; // Replace it
+      this.commands[existingCmdIndex] = cmd;
     } else {
-      this.commands.push(cmd); // Add it
+      this.commands.push(cmd);
     }
     this.setCommands(this.commands);
   }
-  public setCommands(list: Palette.Command[]): void {
+  setCommands(list) {
     this.commands = Array.isArray(list) ? list.slice() : [];
     this._onQueryChange();
   }
-  public destroy(): void {
+  destroy() {
     this._removeEvents();
     this.dialog?.remove();
   }
-  private _buildUI(): void {
+  _buildUI() {
     this.dialog.className = "cp-dialog";
     this.dialog.setAttribute("aria-modal", "true");
     this.dialog.setAttribute("role", "dialog");
@@ -165,7 +94,7 @@ export class Palette {
       width: "min(90vw, 720px)",
       borderRadius: "12px",
       background: "transparent",
-      boxShadow: "var(--cp-dialog-shadow)",
+      boxShadow: "var(--cp-dialog-shadow)"
     });
     const card = this.document.createElement("div");
     card.className = "cp-card";
@@ -180,7 +109,7 @@ export class Palette {
     this.input.className = "cp-input";
     const hint = this.document.createElement("div");
     hint.className = "cp-hint";
-    hint.textContent = "Esc to close • ↑/↓ to navigate • Enter to run";
+    hint.textContent = "Esc to close \u2022 \u2191/\u2193 to navigate \u2022 Enter to run";
     searchWrap.append(this.input, hint);
     this.results.className = "cp-results";
     this.results.setAttribute("role", "listbox");
@@ -221,7 +150,7 @@ export class Palette {
         `;
     this.document.head.appendChild(style);
   }
-  private _bindEvents(): void {
+  _bindEvents() {
     this.input.addEventListener("input", this._onInput);
     this.dialog.addEventListener("click", this._onDialogClick);
     this.dialog.addEventListener("close", this._onClose);
@@ -229,7 +158,7 @@ export class Palette {
     this.dialog.addEventListener("picker:firstShow", this._onFirstShow);
     this.document.addEventListener("keydown", this._onKeyDown, true);
   }
-  private _removeEvents(): void {
+  _removeEvents() {
     this.input.removeEventListener("input", this._onInput);
     this.dialog.removeEventListener("picker:firstShow", this._onFirstShow);
     this.dialog.removeEventListener("click", this._onDialogClick);
@@ -237,24 +166,24 @@ export class Palette {
     this.dialog.removeEventListener("keydown", this._onFocusTrap);
     this.document.removeEventListener("keydown", this._onKeyDown, true);
   }
-  private _onFirstShow = (): void => {
+  _onFirstShow = () => {
     const commands = this.populateFunc(this);
     this.setCommands(commands);
   };
-  private _onClose = (): void => {
+  _onClose = () => {
     this._clearActiveDescendant();
     this.document.body.style.overflow = "";
   };
-  private _onDialogClick = (e: MouseEvent): void => {
+  _onDialogClick = (e) => {
     if (e.target === this.dialog) {
       e.preventDefault();
       this.hide();
     }
   };
-  private _onInput = (): void => {
+  _onInput = () => {
     this._onQueryChange();
   };
-  private _focusInput(): void {
+  _focusInput() {
     try {
       this.input.focus();
       this.input.select();
@@ -262,8 +191,9 @@ export class Palette {
       console.error(e);
     }
   }
-  private _onKeyDown = (e: KeyboardEvent): void => {
-    if (!this.dialog.open) return;
+  _onKeyDown = (e) => {
+    if (!this.dialog.open)
+      return;
     switch (e.key) {
       case "Escape":
         e.preventDefault();
@@ -290,7 +220,8 @@ export class Palette {
         if (this.filtered.length > 0) {
           e.preventDefault();
           const cmd = this.filtered[this.selectedIndex];
-          if (cmd) this._runCommand(cmd);
+          if (cmd)
+            this._runCommand(cmd);
         }
         break;
       case "p":
@@ -307,12 +238,14 @@ export class Palette {
         break;
     }
   };
-  private _onFocusTrap = (e: KeyboardEvent): void => {
-    if (e.key !== "Tab") return;
-    const focusable = this.dialog.querySelectorAll<HTMLElement>(
-      'input, button, [tabindex]:not([tabindex="-1"])',
+  _onFocusTrap = (e) => {
+    if (e.key !== "Tab")
+      return;
+    const focusable = this.dialog.querySelectorAll(
+      'input, button, [tabindex]:not([tabindex="-1"])'
     );
-    if (focusable.length === 0) return;
+    if (focusable.length === 0)
+      return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (e.shiftKey && this.document.activeElement === first) {
@@ -323,44 +256,47 @@ export class Palette {
       first.focus();
     }
   };
-  private _onQueryChange(): void {
+  _onQueryChange() {
     const q = this.input.value.trim();
-    const results = q.length >= this.options.minQueryLength
-      ? this._filterCommands(q)
-      : this.commands.slice();
+    const results = q.length >= this.options.minQueryLength ? this._filterCommands(q) : this.commands.slice();
     this.filtered = results;
     this.selectedIndex = Math.min(
       this.selectedIndex,
-      Math.max(0, results.length - 1),
+      Math.max(0, results.length - 1)
     );
-    if (this.selectedIndex < 0) this.selectedIndex = 0;
+    if (this.selectedIndex < 0)
+      this.selectedIndex = 0;
     this._renderResults(q);
   }
-  private _filterCommands(q: string): Palette.Command[] {
-    if (q === "") return this.commands.slice();
+  _filterCommands(q) {
+    if (q === "")
+      return this.commands.slice();
     const query = q.toLowerCase();
-    const scored = this.commands
-      .map((cmd) => {
-        const title = (cmd.title || "").toLowerCase();
-        const subtitle = (cmd.subtitle || "").toLowerCase();
-        let score = 0;
-        if (title === query) score += 100;
-        if (title.startsWith(query)) score += 75;
-        if (title.includes(query)) score += 50;
-        if (subtitle.includes(query)) score += 30;
-        if (this.options.fuzzy && this._fuzzyMatch(query, title)) {
-          score += 10;
-        }
-        return { cmd, score };
-      })
-      .filter((x) => x.score > 0);
+    const scored = this.commands.map((cmd) => {
+      const title = (cmd.title || "").toLowerCase();
+      const subtitle = (cmd.subtitle || "").toLowerCase();
+      let score = 0;
+      if (title === query)
+        score += 100;
+      if (title.startsWith(query))
+        score += 75;
+      if (title.includes(query))
+        score += 50;
+      if (subtitle.includes(query))
+        score += 30;
+      if (this.options.fuzzy && this._fuzzyMatch(query, title)) {
+        score += 10;
+      }
+      return { cmd, score };
+    }).filter((x) => x.score > 0);
     scored.sort(
-      (a, b) => b.score - a.score || a.cmd.title.localeCompare(b.cmd.title),
+      (a, b) => b.score - a.score || a.cmd.title.localeCompare(b.cmd.title)
     );
     return scored.map((s) => s.cmd);
   }
-  private _fuzzyMatch(query: string, text: string): boolean {
-    if (query.length === 0) return true;
+  _fuzzyMatch(query, text) {
+    if (query.length === 0)
+      return true;
     let qi = 0, ti = 0;
     while (qi < query.length && ti < text.length) {
       if (query[qi] === text[ti]) {
@@ -370,12 +306,13 @@ export class Palette {
     }
     return qi === query.length;
   }
-  private _renderResults(query: string): void {
+  _renderResults(query) {
     this.results.innerHTML = "";
     const hasResults = this.filtered.length > 0;
     this.emptyState.style.display = hasResults ? "none" : "";
     this.results.style.display = hasResults ? "grid" : "none";
-    if (!hasResults) return;
+    if (!hasResults)
+      return;
     this.filtered.forEach((cmd, idx) => {
       const item = this.document.createElement("div");
       item.className = "cp-item";
@@ -410,10 +347,12 @@ export class Palette {
     });
     this._ensureSelectionVisible();
   }
-  private _highlight(text: string, query: string): string {
-    if (!query) return this._escapeHtml(text);
+  _highlight(text, query) {
+    if (!query)
+      return this._escapeHtml(text);
     const q = query.trim().toLowerCase();
-    if (!q) return this._escapeHtml(text);
+    if (!q)
+      return this._escapeHtml(text);
     const lowerText = text.toLowerCase();
     const pos = lowerText.indexOf(q);
     if (pos !== -1) {
@@ -422,7 +361,6 @@ export class Palette {
       const after = this._escapeHtml(text.slice(pos + q.length));
       return `${before}<span class="cp-highlight">${match}</span>${after}`;
     }
-    // Fallback for fuzzy highlighting
     let out = "";
     let qi = 0;
     for (const char of text) {
@@ -435,17 +373,17 @@ export class Palette {
     }
     return out;
   }
-  private _escapeHtml(s: string): string {
-    const map: Record<string, string> = {
+  _escapeHtml(s) {
+    const map = {
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
-      "'": "&#39;",
+      "'": "&#39;"
     };
     return String(s).replace(/[&<>"']/g, (c) => map[c]);
   }
-  private _setSelectedIndex(i: number): void {
+  _setSelectedIndex(i) {
     this.selectedIndex = Math.max(0, Math.min(i, this.filtered.length - 1));
     Array.from(this.results.children).forEach((node, idx) => {
       if (idx === this.selectedIndex) {
@@ -459,15 +397,16 @@ export class Palette {
     });
     this._ensureSelectionVisible();
   }
-  private _moveSelection(delta: number): void {
-    if (this.filtered.length === 0) return;
-    const newIndex = (this.selectedIndex + delta + this.filtered.length) %
-      this.filtered.length;
+  _moveSelection(delta) {
+    if (this.filtered.length === 0)
+      return;
+    const newIndex = (this.selectedIndex + delta + this.filtered.length) % this.filtered.length;
     this._setSelectedIndex(newIndex);
   }
-  private _ensureSelectionVisible(): void {
-    const node = this.results.children[this.selectedIndex] as HTMLElement;
-    if (!node) return;
+  _ensureSelectionVisible() {
+    const node = this.results.children[this.selectedIndex];
+    if (!node)
+      return;
     const containerTop = this.results.scrollTop;
     const containerBottom = containerTop + this.results.clientHeight;
     const nodeTop = node.offsetTop;
@@ -478,17 +417,17 @@ export class Palette {
       this.results.scrollTop = nodeBottom - this.results.clientHeight + 6;
     }
   }
-  private _clearActiveDescendant(): void {
+  _clearActiveDescendant() {
     this.results.removeAttribute("aria-activedescendant");
   }
-  private _runCommand(cmd: Palette.Command): void {
+  _runCommand(cmd) {
     try {
       if (typeof cmd.run === "function") {
         this.hide();
         const res = cmd.run(this.window);
-        if (res && typeof (res as Promise<void>).then === "function") {
-          (res as Promise<void>).catch((err: Error) =>
-            console.error("Command error:", err)
+        if (res && typeof res.then === "function") {
+          res.catch(
+            (err) => console.error("Command error:", err)
           );
         }
       } else {
@@ -498,9 +437,12 @@ export class Palette {
       console.error("Command execution failed", err);
     }
   }
-  public init(_win: Window): void {
+  init(_win) {
     if (this.options.populateOnInit === true) {
       this.setCommands(this.populateFunc(this));
     }
   }
-}
+};
+export {
+  Palette
+};

@@ -3,7 +3,8 @@
     "imports": {
         "@std/assert": "jsr:@std/assert@1",
         "chrome://userchromejs/content/uc_api.sys.mjs": "https://raw.githubusercontent.com/MrOtherGuy/fx-autoconfig/refs/heads/master/types/index.d.ts",
-        "resource:///modules/EveryWindow.sys.mjs": "https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/main/browser/modules/EveryWindow.sys.mjs"
+        "resource:///modules/EveryWindow.sys.mjs": "https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/main/browser/modules/EveryWindow.sys.mjs",
+        "tools/@types/firefox": "https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/main/tools/@types/index.d.ts"
     },
     "compilerOptions": {
         "lib": [
@@ -13,5 +14,8 @@
             "https://raw.githubusercontent.com/MrOtherGuy/fx-autoconfig/refs/heads/master/types/index.d.ts",
             "https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/main/tools/@types/index.d.ts"
         ]
+    },
+    "tasks": {
+        "build": "deno run --allow-env --allow-run --allow-read --allow-write=dist build.ts"
     }
 }
