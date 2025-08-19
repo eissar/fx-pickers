@@ -13,9 +13,9 @@
         "types": [
             "https://raw.githubusercontent.com/MrOtherGuy/fx-autoconfig/refs/heads/master/types/index.d.ts",
             "https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/main/tools/@types/index.d.ts"
-        ]
+        ],
     },
     "tasks": {
-        "build": "deno run --allow-env --allow-run --allow-read --allow-write=dist build.ts"
+        "build": "deno run --allow-env --allow-run --allow-read --allow-write=dist --allow-sys build.ts"
     }
 }
