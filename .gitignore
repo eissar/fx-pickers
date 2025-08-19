@@ -1,0 +1,21 @@
+# temp files
+*~
+
+# builds
+/build
+
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.zip
+
+# misc
+*.disabled
+*.internal.*
+*.ignore.*
+*.vim
+
