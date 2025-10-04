@@ -624,13 +624,13 @@ export class Palette {
                 }
                 break
             case 'p':
-                if (e.altKey) {
+                if (e.ctrlKey) {
                     e.preventDefault()
                     this._moveSelection(-1)
                 }
                 break
             case 'n':
-                if (e.altKey) {
+                if (e.ctrlKey) {
                     e.preventDefault()
                     this._moveSelection(1)
                 }
